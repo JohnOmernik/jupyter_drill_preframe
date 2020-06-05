@@ -16,7 +16,7 @@ from IPython.core.display import HTML
 import requests
 import socket
 from requests.packages.urllib3.exceptions import SubjectAltNameWarning, InsecureRequestWarning
-from requests_toolbelt.adapters import host_header_ssl
+#from requests_toolbelt.adapters import host_header_ssl
 requests.packages.urllib3.disable_warnings(SubjectAltNameWarning)
 
 
@@ -81,6 +81,8 @@ class Drill(Magics):
     opts[name_str + '_base_url_port'] = ["", "Port of connection derived from base_url"]
     opts[name_str + '_base_url_scheme'] = ["", "Scheme of connection derived from base_url"]
 
+
+    opts['drill_embedded'] = [False, "Connect without username/password and without sessions"]
     opts['drill_pin_to_ip'] = [False, "Obtain an IP from the name and connect directly to that IP"]
     opts['drill_pinned_ip'] = ["", "IP of pinned connection"]
     opts['drill_rewrite_host'] = [False, "When using Pin to IP, rewrite the host header to match the name of base_url"]
@@ -92,9 +94,10 @@ class Drill(Magics):
 
 
     # Class Init function - Obtain a reference to the get_ipython()
-    def __init__(self, shell, pd_use_beaker=False, drill_rewrite_host=False, drill_pin_to_ip=False, *args, **kwargs):
+    def __init__(self, shell, pd_use_beaker=False, drill_rewrite_host=False, drill_pin_to_ip=False, drill_embedded=False, *args, **kwargs):
         super(Drill, self).__init__(shell)
         self.ipy = get_ipython()
+        self.opts['drill_embedded'][0] = drill_embedded
         self.opts['drill_pin_to_ip'][0] = drill_pin_to_ip
         self.opts['drill_rewrite_host'][0] = drill_rewrite_host
         self.opts['pd_use_beaker'][0] = pd_use_beaker
@@ -177,7 +180,7 @@ class Drill(Magics):
 
     def connect(self, prompt=False):
         global tpass
-        if self.connected == False:
+        if self.connected == False and self.opts['drill_embedded'][0] == False:
             if prompt == True or self.opts[self.name_str + '_user'][0] == '':
                 print("User not specified in JUPYTER_%s_USER or user override requested" % self.name_str.upper())
                 tuser = input("Please type user name if desired: ")
@@ -220,8 +223,20 @@ class Drill(Magics):
             else:
                 print("Connection Error - Perhaps Bad Usename/Password?")
 
-        else:
+        elif self.connected == True and self.opts['drill_embedded'][0] == False:
             print(self.name_str.capitalize() + "is already connected - Please type %" + self.name_str + " for help on what you can you do")
+        elif self.opts['drill_embedded'][0] == True:
+            print("Drill Embedded Selected, sessions will not work!")
+            print("Using http://localhost:8047 as url for embedded mode")
+            myurl = "http://localhost:8087"
+            ts1 = myurl.split("://")
+            self.opts[self.name_str + '_base_url_scheme'][0] = ts1[0]
+            t1 = ts1[1]
+            ts2 = t1.split(":")
+            self.opts[self.name_str + '_base_url_host'][0] = ts2[0]
+            self.opts[self.name_str + '_base_url_port'][0] = ts2[1]
+            self.opts[self.name_str + '_base_url'][0] = myurl
+            self.connected = True
 
         if self.connected != True:
             self.disconnect()
@@ -239,7 +254,7 @@ class Drill(Magics):
                 print("")
                 self.opts['drill_url'][0] = "%s://%s:%s" % ( self.opts['drill_base_url_scheme'][0],  self.opts['drill_pinned_ip'][0] ,  self.opts['drill_base_url_port'][0])
                 if self.opts['drill_rewrite_host'][0] == True:
-                    self.session.mount("https://", host_header_ssl.HostHeaderSSLAdapter())
+                    #self.session.mount("https://", host_header_ssl.HostHeaderSSLAdapter())
                     if self.opts['drill_inc_port_in_rewrite'][0] == True:
                         self.opts['drill_headers'][0]['host'] = self.opts['drill_base_url_host'][0] + ":" + self.opts['drill_base_url_port'][0]
                     else:

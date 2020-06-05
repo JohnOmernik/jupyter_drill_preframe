@@ -26,7 +26,7 @@ with open(pjoin(here, integration_str + '_core', '_version.py')) as f:
 
 
 setup_args = dict(
-    name='jupyter_' + instegration_str,
+    name='jupyter_' + integration_str,
     packages=[integration_str + '_core'],
     version=version_ns['__version__'],
     description="""An Interface Jupyter Notebooks.""",
