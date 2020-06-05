@@ -230,7 +230,7 @@ class Drill(Magics):
 
             print("Drill Embedded Selected, sessions will not work!")
             print("Using http://localhost:8047 as url for embedded mode")
-            myurl = "http://localhost:8087"
+            myurl = "http://localhost:8047"
             ts1 = myurl.split("://")
             self.opts[self.name_str + '_base_url_scheme'][0] = ts1[0]
             t1 = ts1[1]
@@ -238,6 +238,7 @@ class Drill(Magics):
             self.opts[self.name_str + '_base_url_host'][0] = ts2[0]
             self.opts[self.name_str + '_base_url_port'][0] = ts2[1]
             self.opts[self.name_str + '_base_url'][0] = myurl
+            self.opts[self.name_str + '_url'][0] = myurl
             self.connected = True
 
         if self.connected != True:
@@ -326,7 +327,6 @@ class Drill(Magics):
         # So if bReRun is True, we allow bRun to stay true. This ensures the user to submit after warnings
         if query.lower().find("limit ") < 0:
             print("WARNING - Queries shoud have a limit so you don't bonkers your DOM")
-                print("Query will be submitted - Poor DOM")
         # Warn and do not allow submission
         # There is no way for a user to submit this query 
 #        if query.lower().find('limit ") < 0:
