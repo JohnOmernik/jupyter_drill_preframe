@@ -1,0 +1,11 @@
+jupyterhub>=0.5
+sasl
+IPython
+pandas
+ipywidgets
+
+
+# Your integration specifics go below here:
+requests
+requests_toolbelt
+getpass
