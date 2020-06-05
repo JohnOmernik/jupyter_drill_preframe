@@ -248,7 +248,7 @@ class Drill(Magics):
                         print("Headers in connect: %s" % self.opts['drill_headers'][0])
         else:
             self.opts['drill_url'][0] = self.opts['drill_base_url'][0]
-        myurl = self.drill_opts['drill_url'][0] + "/j_security_check"
+        myurl = self.opts['drill_url'][0] + "/j_security_check"
         if self.debug:
             print("")
             print("Connecting URL: %s" % myurl)
