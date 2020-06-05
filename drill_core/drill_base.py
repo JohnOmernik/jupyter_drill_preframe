@@ -81,7 +81,7 @@ class Drill(Magics):
     opts[name_str + '_base_url_port'] = ["", "Port of connection derived from base_url"]
     opts[name_str + '_base_url_scheme'] = ["", "Scheme of connection derived from base_url"]
 
-
+    opts['drill_verbose_errors'] = [False, "Show more verbose errors if available"]
     opts['drill_embedded'] = [False, "Connect without username/password and without sessions"]
     opts['drill_pin_to_ip'] = [False, "Obtain an IP from the name and connect directly to that IP"]
     opts['drill_pinned_ip'] = ["", "IP of pinned connection"]
@@ -149,7 +149,7 @@ class Drill(Magics):
 
     def setvar(self, line):
         pd_set_vars = ['pd_display.max_columns', 'pd_display.max_rows', 'pd_max_colwidth', 'pd_use_beaker']
-        allowed_opts = pd_set_vars + ['pd_replace_crlf', 'pd_display_idx', 'drill_base_url', 'drill_verify', 'drill_pin_to_ip', 'drill_rewrite_host', 'drill_ignore_ssl_warn', 'drill_inc_port_in_rewrite']
+        allowed_opts = pd_set_vars + ['pd_replace_crlf', 'pd_display_idx', 'drill_base_url', 'drill_verify', 'drill_pin_to_ip', 'drill_rewrite_host', 'drill_ignore_ssl_warn', 'drill_inc_port_in_rewrite', 'drill_embedded', 'drill_verbose_errors']
 
         tline = line.replace('set ', '')
         tkey = tline.split(' ')[0]
@@ -226,6 +226,8 @@ class Drill(Magics):
         elif self.connected == True and self.opts['drill_embedded'][0] == False:
             print(self.name_str.capitalize() + "is already connected - Please type %" + self.name_str + " for help on what you can you do")
         elif self.opts['drill_embedded'][0] == True:
+            self.session = requests.Session()
+
             print("Drill Embedded Selected, sessions will not work!")
             print("Using http://localhost:8047 as url for embedded mode")
             myurl = "http://localhost:8087"
@@ -324,10 +326,6 @@ class Drill(Magics):
         # So if bReRun is True, we allow bRun to stay true. This ensures the user to submit after warnings
         if query.lower().find("limit ") < 0:
             print("WARNING - Queries shoud have a limit so you don't bonkers your DOM")
-            if bReRun == False:
-                print("First Submission - Not Sending to Server - Run again to submit as is")
-                bRun = False
-            else:
                 print("Query will be submitted - Poor DOM")
         # Warn and do not allow submission
         # There is no way for a user to submit this query 
@@ -377,7 +375,7 @@ class Drill(Magics):
                                 status = "Failure: Error Loading JSON records or parsing into dataframe"
                 except Exception as e:
                     str_err = str(e)
-                    if self.opts['verbose_errors'][0] == True:
+                    if self.opts['drill_verbose_errors'][0] == True:
                         status = "Failure - query_error: " + str_err
                     else:
                         msg_find = "errorMessage=\""
@@ -465,23 +463,26 @@ class Drill(Magics):
                 elif status.find("Success - No Results") == 0:
                     print("No Results returned in %s seconds" % qtime)
                 else:
-                   self.ipy.user_ns['prev_' + self.name_str] = result_df
-                   mycnt = len(result_df)
-                   print("%s Records in Approx %s seconds" % (mycnt,qtime))
-                   print("")
-                   if mycnt <= int(self.opts['pd_display.max_rows'][0]):
-                       if self.debug:
-                           print("Testing max_colwidth: %s" %  pd.get_option('max_colwidth'))
-                       if self.opts['pd_use_beaker'][0] == True:
-                           if self.opts['pd_beaker_bool_workaround'][0]== True:
+                    self.ipy.user_ns['prev_' + self.name_str] = result_df
+                    if result_df is not None:
+                        mycnt = len(result_df)
+                    else:
+                        mycnt = 0
+                    print("%s Records in Approx %s seconds" % (mycnt,qtime))
+                    print("")
+                    if mycnt <= int(self.opts['pd_display.max_rows'][0]):
+                        if self.debug:
+                            print("Testing max_colwidth: %s" %  pd.get_option('max_colwidth'))
+                        if self.opts['pd_use_beaker'][0] == True:
+                            if self.opts['pd_beaker_bool_workaround'][0]== True:
                                 for x in result_df.columns:
                                     if result_df.dtypes[x] == 'bool':
                                         result_df[x] = result_df[x].astype(object)
-                           display(TableDisplay(result_df))
-                       else:
-                           display(HTML(result_df.to_html(index=self.opts['pd_display_idx'][0])))
-                   else:
-                       print("Number of results (%s) greater than pd_display_max(%s)" % (mycnt, self.opts['pd_display.max_rows'][0]))
+                            display(TableDisplay(result_df))
+                        else:
+                            display(HTML(result_df.to_html(index=self.opts['pd_display_idx'][0])))
+                    else:
+                        print("Number of results (%s) greater than pd_display_max(%s)" % (mycnt, self.opts['pd_display.max_rows'][0]))
             else:
                 print(self.name_str.capitalize() + " is not connected: Please see help at %" + self.name_str)
 
