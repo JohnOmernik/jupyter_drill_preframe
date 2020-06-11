@@ -27,6 +27,12 @@ try:
 except:
     pass
 
+try:
+    import qgrid
+except:
+    pass
+
+
 #import IPython.display
 from IPython.display import display_html, display, Javascript, FileLink, FileLinks, Image
 import ipywidgets as widgets
@@ -56,7 +62,7 @@ class Drill(Magics):
     opts['pd_display.max_rows'] = [1000, 'Number of Max Rows']
     opts['pd_display.max_columns'] = [None, 'Max Columns']
 
-    opts['pd_use_beaker'] = [False, 'Use the Beaker system for Pandas Display']
+    opts['pd_display_grid'] = ["html", 'How Dataframes are displayed: options are html (default), qgrid (soon to be default, and beakerx']
     opts['pd_beaker_bool_workaround'] = [True, 'Look for Dataframes with bool columns, and make it object for display in BeakerX']
 
     pd.set_option('display.max_columns', opts['pd_display.max_columns'][0])
@@ -94,18 +100,26 @@ class Drill(Magics):
 
 
     # Class Init function - Obtain a reference to the get_ipython()
-    def __init__(self, shell, pd_use_beaker=False, drill_rewrite_host=False, drill_pin_to_ip=False, drill_embedded=False, *args, **kwargs):
+    def __init__(self, shell, pd_display_grid="html", drill_rewrite_host=False, drill_pin_to_ip=False, drill_embedded=False, *args, **kwargs):
         super(Drill, self).__init__(shell)
         self.ipy = get_ipython()
         self.opts['drill_embedded'][0] = drill_embedded
         self.opts['drill_pin_to_ip'][0] = drill_pin_to_ip
         self.opts['drill_rewrite_host'][0] = drill_rewrite_host
-        self.opts['pd_use_beaker'][0] = pd_use_beaker
-        if pd_use_beaker == True:
+        self.opts['pd_display_grid'][0] = pd_display_grid
+        if pd_display_grid == "beakerx":
             try:
                 beakerx.pandas_display_table()
             except:
-                print("WARNING - BEAKER SUPPORT FAILED")
+                print("WARNING - BEAKER SUPPORT FAILED - defaulting to html")
+                self.opts['pd_display_grid'][0] = "html"
+        elif pd_display_grid == "qgrid":
+            try:
+                import qgrid
+            except:
+                print ("WARNING - QGRID SUPPORT FAILED - defaulting to html")
+                self.opts['pd_display_grid'][0] = "html"
+
 
     def retStatus(self):
 
@@ -148,7 +162,7 @@ class Drill(Magics):
 
 
     def setvar(self, line):
-        pd_set_vars = ['pd_display.max_columns', 'pd_display.max_rows', 'pd_max_colwidth', 'pd_use_beaker']
+        pd_set_vars = ['pd_display.max_columns', 'pd_display.max_rows', 'pd_max_colwidth', 'pd_display_grid']
         allowed_opts = pd_set_vars + ['pd_replace_crlf', 'pd_display_idx', 'drill_base_url', 'drill_verify', 'drill_pin_to_ip', 'drill_rewrite_host', 'drill_ignore_ssl_warn', 'drill_inc_port_in_rewrite', 'drill_embedded', 'drill_verbose_errors']
 
         tline = line.replace('set ', '')
@@ -473,12 +487,14 @@ class Drill(Magics):
                     if mycnt <= int(self.opts['pd_display.max_rows'][0]):
                         if self.debug:
                             print("Testing max_colwidth: %s" %  pd.get_option('max_colwidth'))
-                        if self.opts['pd_use_beaker'][0] == True:
+                        if self.opts['pd_display_grid'][0] == "beakerx":
                             if self.opts['pd_beaker_bool_workaround'][0]== True:
                                 for x in result_df.columns:
                                     if result_df.dtypes[x] == 'bool':
                                         result_df[x] = result_df[x].astype(object)
                             display(TableDisplay(result_df))
+                        elif self.opts['pd_display_grid'][0] == "qgrid":
+                            display(qgrid.show_grid(result_df))
                         else:
                             display(HTML(result_df.to_html(index=self.opts['pd_display_idx'][0])))
                     else:
